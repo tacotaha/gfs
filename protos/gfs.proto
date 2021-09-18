@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package gfs;
+
+service Master {
+    rpc HeartBeat(HBPayload) returns (HBResp) {}
+    rpc Open(OpenPayload) returns (OpenResp) {}
+}
+
+message HBResp {
+    bool Success = 1;
+}
+
+message HBPayload {
+    string ID = 1;
+    int32 NumChunks = 2;
+}
+
+message OpenPayload {
+    string FileName = 1;
+    enum Mode{
+        READ = 0;
+        WRITE = 1;
+    }
+    Mode mode = 2;
+}
+
+message ChunkServer {
+    string ID = 1;
+    bool Primary = 2;
+}
+
+message OpenResp {
+    uint64 ChunkID = 1;
+    repeated ChunkServer Loc = 3;
+}
