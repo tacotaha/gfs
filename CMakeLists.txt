@@ -3,10 +3,11 @@ cmake_minimum_required(VERSION 3.5.1)
 set(PACKAGE_NAME "gfs")
 project(${PACKAGE_NAME} CXX)
 
-add_compile_options(-std=c++11 -Wall -Werror -pedantic -g)
+add_compile_options(-std=c++17 -Wall -Werror -pedantic -g)
 
 list(APPEND CMAKE_PREFIX_PATH "/opt/grpc" "/opt/protobuf")
 
+find_package(OpenSSL REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
@@ -47,13 +48,18 @@ target_link_libraries(gfs_grpc_proto
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
+add_library(gfs_core "src/gfs.cpp")
+target_include_directories(gfs_core PRIVATE "include")
+
 # Targets: master cserver
-foreach(_target master cserver client)
+foreach(_target master cserver gfsclient)
   add_executable(${_target} "src/${_target}.cpp")
   target_link_libraries(${_target}
+    gfs_core
     gfs_grpc_proto
     gRPC::grpc++_reflection
     protobuf::libprotobuf
+    OpenSSL::Crypto
   )
   target_include_directories(${_target} PRIVATE "include")
 endforeach()

@@ -9,30 +9,31 @@
 #define CHUNK_SIZE (1 << 6)
 #define RFACTOR 3
 
-typedef enum GFS_OP{
-    GFS_CREATE = 0,
-    GFS_DELETE,
-    GFS_OPEN,
-    GFS_CLOSE,
-    GFS_READ,
-    GFS_WRITE
-} GFS_OP;
+#define READ    (1 << 0)
+#define WRITE   (1 << 1)
+#define APPEND  (1 << 2)
 
-typedef enum MODE{
-   READ = 0,
-   WRITE
-}MODE;
+#include <string>
+#include <memory>
+
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/health_check_service_interface.h>
+
+#include "gfs.grpc.pb.h"
 
 typedef uint64_t chunkid_t;
+typedef uint8_t fmode_t;
+typedef unsigned char uchar_t;
+typedef std::pair<std::string, bool> chunkserver_t;
 
-struct file_handle_t {
-    std::string name;
-    uint64_t offset; // multiple of chunk size
-};
-
-struct chunk_handle_t {
+typedef struct chunk_handle_t {
     chunkid_t cid;
-    std::string loc[RFACTOR];
-};
+    chunkserver_t loc[RFACTOR];
+} chunk_handle_t;
+
+std::string sha256sum(const void* payload, size_t len);
+std::unique_ptr<gfs::Master::Stub> gfs_master_connect();
+void dump_buff(const char*);
 
 #endif /* GFS_H */

@@ -18,30 +18,29 @@
 #include "gfs.h"
 
 typedef std::vector<chunkid_t> chunkset_t;
-typedef std::pair<std::string, bool> chunkserver_t;
+typedef std::pair<std::time_t, uint64_t> cs_stats_t;
+typedef std::pair<std::string, cs_stats_t> cs_kv_t;
 
 class GFSMaster final : public gfs::Master::Service{
     public:
         GFSMaster(const std::string&);        
 
         // rpc service calls
-        grpc::Status HeartBeat(grpc::ServerContext*, const gfs::HBPayload*, 
-                               gfs::HBResp*) override;
-        grpc::Status Open(grpc::ServerContext*, const gfs::OpenPayload*, 
-                          gfs::OpenResp*) override;
+        grpc::Status HeartBeat(grpc::ServerContext*, const gfs::HBPayload*,
+                               gfs::Status*) override;
+        grpc::Status Open(grpc::ServerContext*, const gfs::OpenPayload*,
+                          gfs::FileHandle*) override;
+        grpc::Status RequestChunk(grpc::ServerContext*, const gfs::FileHandle*,
+                                  gfs::RCResp*) override;
     private:
-        void StartRPCServer(); 
-        chunkid_t new_chunkid();
-        chunkid_t new_chunk(const std::string&);
-
         std::string IP;
 
         // filename -> chunkset
         std::map<std::string, chunkset_t> chunks;
         std::mutex chunks_mutex;
         
-        // chunk server IP -> timestamp of last contact
-        std::map<std::string, std::time_t> chunk_servers;
+        // chunk server IP -> <last seen, numchunks>
+        std::map<std::string, cs_stats_t> chunk_servers;
         std::mutex chunkservers_mutex;
 
         // chunkids -> server locations
@@ -50,6 +49,15 @@ class GFSMaster final : public gfs::Master::Service{
 
         chunkid_t chunk_ctr;
         std::mutex chunk_ctr_mutex;
+
+        void StartRPCServer();
+        chunkid_t new_chunkid();
+
+        chunkid_t new_chunk(const std::string&);
+        int assign_chunk(const std::string&, chunkid_t, bool);
+
+        int send_chunk(const std::string&);
+        void get_servers(std::vector<std::string>&);
 };
 
 #endif /* MASTER_H */
