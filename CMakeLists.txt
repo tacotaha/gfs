@@ -51,7 +51,7 @@ target_link_libraries(gfs_grpc_proto
 add_library(gfs_core "src/gfs.cpp")
 target_include_directories(gfs_core PRIVATE "include")
 
-# Targets: master cserver
+# Targets: master cserver gfsclient
 foreach(_target master cserver gfsclient)
   add_executable(${_target} "src/${_target}.cpp")
   target_link_libraries(${_target}
