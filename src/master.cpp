@@ -33,9 +33,9 @@ int GFSMaster::send_chunk(const std::string &ip_addr) {
   gfs::Status r;
   gfs::Chunk chunk;
 
-  chunk.set_id(cid);
   chunk.set_data(rand_bytes, CHUNK_SIZE);
-  chunk.set_checksum(checksum);
+  chunk.mutable_chunk()->set_id(cid);
+  chunk.mutable_chunk()->set_checksum(checksum);
 
   return client->SendChunk(&ctx, chunk, &r).ok();
 }

@@ -3,7 +3,7 @@
 
 #define BASE_IP "127.0.0.1"
 #define BASE_PORT "8000"
-#define CHUNK_DIR ".chunks"
+#define CHUNK_DIR ".gfs"
 
 #define HB_INTERVAL_MS (2 * 1000)
 #define CHUNK_SIZE (1 << 6)

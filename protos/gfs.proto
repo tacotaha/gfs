@@ -10,6 +10,7 @@ service Master {
 
 service CServer {
     rpc SendChunk(Chunk) returns (Status){}
+    rpc GetChunk(ChunkID) returns (Chunk){}
     rpc NewChunk(NCPayload) returns (Status){}
 }
 
@@ -19,9 +20,13 @@ message FileHandle {
 }
 
 message Chunk {
-    uint64 ID = 1;
-    string Checksum = 2;
-    bytes  Data = 3;
+    ChunkID Chunk = 1;
+    bytes  Data = 2;
+}
+
+message ChunkID {
+  uint64 ID = 1;
+  string Checksum = 2;
 }
 
 message Status {
