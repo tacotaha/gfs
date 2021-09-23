@@ -8,22 +8,23 @@
 file_handle_t* GFSClient::open(const std::string& file_name, fmode_t mode) {
   file_handle_t* f = nullptr;
   chunk_handle_t* ch = nullptr;
+  std::string file_path = this->_get_file_path(file_name);
 
   grpc::ClientContext c;
   gfs::OpenPayload p;
   gfs::FileHandle fh;
 
   p.set_id(this->ip);
-  p.set_filename(file_name);
+  p.set_filename(file_path);
   p.set_mode(mode);
 
   if (this->master->Open(&c, p, &fh).ok()) {
-    f = new file_handle_t(file_name, mode, fh.ptr(), this->_new_fh());
+    f = new file_handle_t(file_path, mode, fh.ptr(), this->_new_fh());
     if (f) {
       std::lock_guard<std::mutex> g(this->openfiles_mutex);
-      if (this->open_files.find(file_name) == this->open_files.end())
-        this->open_files[file_name] = std::vector<uint64_t>();
-      this->open_files[file_name].push_back(f->inode);
+      if (this->open_files.find(file_path) == this->open_files.end())
+        this->open_files[file_path] = std::vector<uint64_t>();
+      this->open_files[file_path].push_back(f->inode);
 
       std::lock_guard<std::mutex> l(this->buffmap_mutex);
       if (this->buff_map.find(f->inode) == this->buff_map.end())
@@ -31,7 +32,7 @@ file_handle_t* GFSClient::open(const std::string& file_name, fmode_t mode) {
     }
 
     // prefetch first chunk for reading
-    if (mode & READ && (ch = this->request_chunk(file_name, 0))) {
+    if (mode & READ && (ch = this->request_chunk(file_path, 0))) {
       this->get_chunk(ch, this->buff_map[f->inode]);
       delete ch;
     }
@@ -40,19 +41,52 @@ file_handle_t* GFSClient::open(const std::string& file_name, fmode_t mode) {
   return f;
 }
 
+int GFSClient::remove(const std::string& file_name) {
+  std::string file_path = this->_get_file_path(file_name);
+
+  grpc::ClientContext c;
+  gfs::FileHandle fh;
+  gfs::Status s;
+
+  fh.set_filename(file_path);
+
+  if (this->master->Remove(&c, fh, &s).ok()) {
+    std::lock_guard<std::mutex> g(this->openfiles_mutex);
+    const auto of_it = this->open_files.find(file_path);
+    if (of_it != this->open_files.end()) {
+      std::lock_guard<std::mutex> l(this->buffmap_mutex);
+      for (const auto& x : of_it->second) {
+        const auto bm_it = this->buff_map.find(x);
+        if (bm_it != this->buff_map.end()) {
+          delete bm_it->second;
+          this->buff_map.erase(bm_it);
+        }
+      }
+      this->open_files.erase(of_it);
+    }
+  }
+
+  return 0;
+}
+
 void GFSClient::close(file_handle_t* fh) {
   size_t bleft = 0;
   chunk_handle_t* ch = nullptr;
 
   if (fh && fh->mode & (WRITE | APPEND) && fh->ptr)
     if ((ch = this->request_chunk(fh->file_name, fh->ptr - 1))) {
-      std::lock_guard<std::mutex> g(this->buffmap_mutex);
-      const auto it = this->buff_map.find(fh->inode);
-      if (it != this->buff_map.end()) {
+      std::lock_guard<std::mutex> g(this->openfiles_mutex);
+      const auto of_it = this->open_files.find(fh->file_name);
+      if (of_it != this->open_files.end())
+        std::remove(of_it->second.begin(), of_it->second.end(), fh->inode);
+
+      std::lock_guard<std::mutex> l(this->buffmap_mutex);
+      const auto bm_it = this->buff_map.find(fh->inode);
+      if (bm_it != this->buff_map.end()) {
         bleft = (CHUNK_SIZE - (fh->ptr % CHUNK_SIZE));
         if (bleft < CHUNK_SIZE) {
-          memset(it->second + (fh->ptr % CHUNK_SIZE), 0, bleft);
-          this->flush(ch, it->second);
+          memset(bm_it->second + (fh->ptr % CHUNK_SIZE), 0, bleft);
+          this->flush(ch, bm_it->second);
         }
       }
       delete ch;
@@ -239,6 +273,8 @@ int main(int argc, char* argv[]) {
 
   assert(nread == nwrite);
   for (int i = 0; i < payload_size; ++i) assert(payload[i] == p_in[i]);
+
+  client.remove("file.txt");
 
   return 0;
 }

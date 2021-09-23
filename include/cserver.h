@@ -25,6 +25,8 @@ class CServer final : public gfs::CServer::Service {
   grpc::Status NewChunk(grpc::ServerContext*, const gfs::NCPayload*,
                         gfs::Status*) override;
   grpc::Status GetChunk(grpc::ServerContext*, const gfs::ChunkID*, gfs::Chunk*);
+  grpc::Status RemoveChunk(grpc::ServerContext*, const gfs::ChunkID*,
+                           gfs::Status*);
 
  private:
   void master_connect();

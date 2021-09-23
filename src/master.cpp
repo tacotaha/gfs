@@ -55,6 +55,18 @@ int GFSMaster::assign_chunk(const std::string &ip_addr, chunkid_t cid,
   return client->NewChunk(&ctx, p, &r).ok();
 }
 
+int GFSMaster::remove_chunk(const std::string &ip_addr, chunkid_t cid) {
+  auto c = grpc::CreateChannel(ip_addr, grpc::InsecureChannelCredentials());
+  auto client = std::move(gfs::CServer::NewStub(c));
+
+  grpc::ClientContext ctx;
+  gfs::ChunkID id;
+  gfs::Status r;
+  id.set_id(cid);
+
+  return client->RemoveChunk(&ctx, id, &r).ok();
+}
+
 void GFSMaster::get_servers(std::vector<std::string> &servers) {
   servers.clear();
   std::lock_guard<std::mutex> g(this->chunkservers_mutex);
@@ -99,6 +111,29 @@ grpc::Status GFSMaster::Open(grpc::ServerContext *ct, const gfs::OpenPayload *p,
   r->set_filename(file_name);
   r->set_ptr(0);
 
+  return grpc::Status::OK;
+}
+
+grpc::Status GFSMaster::Remove(grpc::ServerContext *ct,
+                               const gfs::FileHandle *fh, gfs::Status *s) {
+  std::cout << "Remove(" << fh->filename() << ")" << std::endl;
+
+  std::lock_guard<std::mutex> g(this->chunks_mutex);
+  const auto c_it = this->chunks.find(fh->filename());
+  if (c_it != this->chunks.end()) {
+    for (const auto &chunk : c_it->second) {
+      std::lock_guard<std::mutex> l(this->chunklocs_mutex);
+      const auto cl_it = this->chunk_locs.find(chunk);
+      if (cl_it != this->chunk_locs.end())
+        for (const auto &server : cl_it->second)
+          if (!this->remove_chunk(server.first, chunk)) {
+            s->set_status(0);
+            return grpc::Status::CANCELLED;
+          }
+    }
+  }
+
+  s->set_status(1);
   return grpc::Status::OK;
 }
 

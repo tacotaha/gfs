@@ -5,6 +5,7 @@ package gfs;
 service Master {
     rpc HeartBeat(HBPayload) returns (Status) {}
     rpc Open(OpenPayload) returns (FileHandle) {}
+    rpc Remove(FileHandle) returns (Status) {}
     rpc RequestChunk(FileHandle) returns (RCResp) {}
 }
 
@@ -12,6 +13,7 @@ service CServer {
     rpc SendChunk(Chunk) returns (Status){}
     rpc GetChunk(ChunkID) returns (Chunk){}
     rpc NewChunk(NCPayload) returns (Status){}
+    rpc RemoveChunk(ChunkID) returns (Status){}
 }
 
 message FileHandle {

@@ -30,6 +30,8 @@ class GFSMaster final : public gfs::Master::Service {
                          gfs::Status*) override;
   grpc::Status Open(grpc::ServerContext*, const gfs::OpenPayload*,
                     gfs::FileHandle*) override;
+  grpc::Status Remove(grpc::ServerContext*, const gfs::FileHandle*,
+                      gfs::Status*) override;
   grpc::Status RequestChunk(grpc::ServerContext*, const gfs::FileHandle*,
                             gfs::RCResp*) override;
 
@@ -56,6 +58,7 @@ class GFSMaster final : public gfs::Master::Service {
 
   chunkid_t new_chunk(const std::string&);
   int assign_chunk(const std::string&, chunkid_t, bool);
+  int remove_chunk(const std::string&, chunkid_t);
 
   int send_chunk(const std::string&);
   void get_servers(std::vector<std::string>&);

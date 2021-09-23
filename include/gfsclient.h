@@ -3,6 +3,7 @@
 
 #define RETRY_SEND 3
 
+#include <filesystem>
 #include <mutex>
 
 #include "gfs.h"
@@ -32,6 +33,10 @@ class GFSClient {
   void close(file_handle_t*);
   int write(file_handle_t*, const void*, size_t);
   int read(file_handle_t*, void*, size_t);
+  int remove(const std::string&);
+  inline file_handle_t* create(const std::string& fn, fmode_t m) {
+    return this->open(fn, WRITE);
+  }
 
  private:
   std::string ip;
@@ -54,6 +59,11 @@ class GFSClient {
   inline uint64_t _new_fh() {
     std::lock_guard<std::mutex> g(this->_fh_mutex);
     return this->_fh++;
+  }
+
+  inline std::string _get_file_path(const std::string& f) {
+    std::string file_path = std::filesystem::absolute(f);
+    return this->ip + std::string(":") + file_path;
   }
 };
 

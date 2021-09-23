@@ -84,6 +84,19 @@ grpc::Status CServer::GetChunk(grpc::ServerContext* c, const gfs::ChunkID* cid,
   return grpc::Status::OK;
 }
 
+grpc::Status CServer::RemoveChunk(grpc::ServerContext* c,
+                                  const gfs::ChunkID* id, gfs::Status* chunk) {
+  std::cout << "RemoveChunk(" << id->id() << ")" << std::endl;
+  chunkid_t cid = id->id();
+  if (!std::filesystem::remove(this->_get_path(cid)))
+    return grpc::Status::CANCELLED;
+
+  std::lock_guard<std::mutex> g(this->chunks_mutex);
+  this->chunks.erase(cid);
+
+  return grpc::Status::OK;
+}
+
 grpc::Status CServer::NewChunk(grpc::ServerContext* c, const gfs::NCPayload* p,
                                gfs::Status* s) {
   std::lock_guard<std::mutex> g(this->chunks_mutex);
