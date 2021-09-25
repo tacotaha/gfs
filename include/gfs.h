@@ -5,7 +5,10 @@
 #define BASE_PORT "8000"
 #define CHUNK_DIR ".gfs"
 
-#define HB_INTERVAL_MS (2 * 1000)
+#define HB_INTERVAL_MS (5 * 1000)
+#define CR_INTERVAL_MS (HB_INTERVAL_MS << 2)
+#define LEASE_INTERVAL_MS (30 * 1000)
+
 #define CHUNK_SIZE (1 << 6)
 #define RFACTOR 3
 

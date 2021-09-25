@@ -22,29 +22,40 @@ class CServer final : public gfs::CServer::Service {
   // rpc service calls
   grpc::Status SendChunk(grpc::ServerContext*, const gfs::Chunk*,
                          gfs::Status*) override;
-  grpc::Status NewChunk(grpc::ServerContext*, const gfs::NCPayload*,
+  grpc::Status NewChunk(grpc::ServerContext*, const gfs::ChunkID*,
                         gfs::Status*) override;
-  grpc::Status GetChunk(grpc::ServerContext*, const gfs::ChunkID*, gfs::Chunk*);
+  grpc::Status GetChunk(grpc::ServerContext*, const gfs::ChunkID*,
+                        gfs::Chunk*) override;
   grpc::Status RemoveChunk(grpc::ServerContext*, const gfs::ChunkID*,
-                           gfs::Status*);
+                           gfs::Status*) override;
+  grpc::Status SetLease(grpc::ServerContext*, const gfs::Lease*,
+                        gfs::Status*) override;
+  grpc::Status RevokeLease(grpc::ServerContext*, const gfs::ChunkID*,
+                           gfs::Status*) override;
 
  private:
   void master_connect();
-  int send_heartbeat(gfs::Status*);
   void heartbeat();
-
-  gfs::Chunk new_chunk(chunkid_t);
+  void chunk_report();
   int write_chunk(const gfs::Chunk*);
   int get_chunk(chunkid_t, void*);
+  int extend_lease(chunkid_t cid);
+  int send_heartbeat(gfs::Status*);
+  int send_chunk_report(gfs::Status*);
+  gfs::Chunk new_chunk(chunkid_t);
 
   std::string IP;
   std::string server_id;
   std::filesystem::path chunk_dir;
-  std::thread hb_tid;
+  std::vector<std::thread> tids;
 
-  // chunkid -> <checksum, primary>
-  std::map<chunkid_t, chunkserver_t> chunks;
+  // chunkid -> checksum
+  std::map<chunkid_t, std::string> chunks;
   std::mutex chunks_mutex;
+
+  // chunks for which this server is the primary
+  std::map<chunkid_t, time_t> leases;
+  std::mutex leases_mutex;
 
   std::unique_ptr<gfs::Master::Stub> master;
 

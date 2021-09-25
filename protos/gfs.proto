@@ -3,17 +3,21 @@ syntax = "proto3";
 package gfs;
 
 service Master {
-    rpc HeartBeat(HBPayload) returns (Status) {}
-    rpc Open(OpenPayload) returns (FileHandle) {}
-    rpc Remove(FileHandle) returns (Status) {}
-    rpc RequestChunk(FileHandle) returns (RCResp) {}
+    rpc HeartBeat(HBPayload) returns (Status){}
+    rpc ChunkReport(CRPayload) returns (Status){}
+    rpc Open(OpenPayload) returns (FileHandle){}
+    rpc Remove(FileHandle) returns (Status){}
+    rpc RequestChunk(FileHandle) returns (RCResp){}
+    rpc ExtendLease(ELPayload) returns (Lease){}
 }
 
 service CServer {
     rpc SendChunk(Chunk) returns (Status){}
     rpc GetChunk(ChunkID) returns (Chunk){}
-    rpc NewChunk(NCPayload) returns (Status){}
+    rpc NewChunk(ChunkID) returns (Status){}
     rpc RemoveChunk(ChunkID) returns (Status){}
+    rpc SetLease(Lease) returns (Status){}
+    rpc RevokeLease(ChunkID) returns (Status){}
 }
 
 message FileHandle {
@@ -35,11 +39,6 @@ message Status {
     bool Status = 1;
 }
 
-message NCPayload {
-    int64 ID = 1;
-    bool  Primary = 2;
-}
-
 message ChunkServer {
     string ID = 1;
     bool Primary = 2;
@@ -48,6 +47,11 @@ message ChunkServer {
 message HBPayload {
     string ID = 1;
     int32 NumChunks = 2;
+}
+
+message CRPayload {
+  string ID = 1;
+  repeated uint64 Chunks = 2;
 }
 
 message OpenPayload {
@@ -59,4 +63,14 @@ message OpenPayload {
 message RCResp {
     uint64 ChunkID = 1;
     repeated ChunkServer Loc = 3;
+}
+
+message ELPayload {
+  string ID = 1;
+  uint64 ChunkID = 2;
+}
+
+message Lease {
+  uint64 ChunkID = 1;
+  uint64 Timestamp = 2;
 }
